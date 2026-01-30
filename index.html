@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>IBONIRIUM · COSMIC CLOUD · EXP‑01</title>
+<title>IBONIRIUM · Space Cloud · EXP‑01</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body {
@@ -17,276 +17,223 @@ canvas { position:fixed; inset:0; }
   position:fixed;
   bottom:12px; left:12px;
   font-family:monospace;
-  color:#9affff;
+  color:#9affc2;
   font-size:12px;
   line-height:1.4;
   opacity:0.9;
-  text-shadow:0 0 8px #0ff;
-  z-index: 10;
 }
 #panel {
   position:fixed;
   bottom:12px; right:12px;
-  max-width:380px;
+  max-width:360px;
   font-family:monospace;
   font-size:12px;
-  color:#c7ffff;
-  line-height:1.5;
-  background:linear-gradient(to left,rgba(0,20,40,0.8),transparent);
-  padding:12px 16px;
-  border-left:1px solid #0ff;
-  text-shadow:0 0 6px #0ff;
-  z-index: 10;
+  color:#c7ffd9;
+  line-height:1.45;
+  background:linear-gradient(to left,rgba(0,0,0,0.6),transparent);
+  padding:10px 14px;
 }
 </style>
 </head>
 <body>
 <canvas id="stars"></canvas>
-<canvas id="cloud"></canvas>
+<canvas id="terrarium"></canvas>
 <canvas id="sensors"></canvas>
-
 <div id="info">
-<b>IBONIRIUM · COSMIC CLOUD · EXP‑01</b><br>
-Phase: <span id="phase">Growth ∞</span><br>
+<b>IBONIRIUM · LAB SPACE CLOUD · EXP‑01</b><br>
+Phase: <span id="phase">Growth</span><br>
 Day: <span id="day">–</span><br>
-Solar SSN: <span id="ssn">–</span> X-ray: <span id="xray">–</span><br>
-Earth Cloud: <span id="cloudcover">–</span>% Humidity: <span id="hum">–</span>%<br>
-Cosmic Factor: <span id="cf">–</span><br>
-Target: ∞ (вічний цикл)
+Weather Code: <span id="wcode">–</span><br>
+Cloud Factor: <span id="cf">–</span><br>
+Cloud Energy: <span id="ce">–</span><br>
+Target: 13 грудня
 </div>
-
 <div id="panel">
-<b>КОСМІЧНА ХМАРА — ВІЧНА</b><br>
-Хмара формується одночасно під впливом сонячної активності (NOAA) та земної погоди (Open-Meteo, Київ).<br><br>
-Чим вищий SSN, X-ray спалахи, протонні події — тим агресивніше пульсує, розростається та світиться неоновими спалахами.<br>
-Земна хмарність + вологість — додають об'єм, щільність, колір.<br><br>
-Запущено <b>30 січня 2026</b>. Зростання та зміни тривають **назавжди** — без фіксації, без кінця.
+<b>СТАН ЕКСПЕРИМЕНТУ</b><br>
+Це живий лабораторний симулятор космічної хмари. Система формування хмари безперервно реагує на реальні дані погоди з Open-Meteo. Щодня погода змінює густоту, форму, структуру та колір космічної хмари.<br><br>
+До <b>13 грудня</b> відбувається накопичення змін хмари. У цей день експеримент переходить у фінальну фазу: зміни зупиняються, стан хмари фіксується як результат досліду. Після фіксації може бути запущено нову симуляцію з іншими початковими умовами.
 </div>
-
 <script>
-// CANVAS setup
+/* ===== CANVAS ===== */
 const starCanvas = document.getElementById('stars');
-const cloudCanvas = document.getElementById('cloud');
-const sensorCanvas = document.getElementById('sensors');
-
+const tCanvas = document.getElementById('terrarium');
 const sctx = starCanvas.getContext('2d');
-const ctx = cloudCanvas.getContext('2d');
-const sx = sensorCanvas.getContext('2d');
-
-function resize() {
-  starCanvas.width = cloudCanvas.width = sensorCanvas.width = window.innerWidth;
-  starCanvas.height = cloudCanvas.height = window.innerHeight;
+const tctx = tCanvas.getContext('2d');
+const sensorCanvas = document.getElementById('sensors');
+const scx = sensorCanvas.getContext('2d');
+function resize(){
+  starCanvas.width = tCanvas.width = sensorCanvas.width = innerWidth;
+  starCanvas.height = tCanvas.height = innerHeight;
   sensorCanvas.height = 140;
 }
-window.addEventListener('resize', resize);
-resize();
+addEventListener('resize', resize); resize();
 
-// STARS background
-const stars = Array.from({length: 300}, () => ({
-  x: Math.random(),
-  y: Math.random(),
-  z: Math.random() * 0.8 + 0.2
-}));
-
-function drawStars() {
-  sctx.clearRect(0, 0, starCanvas.width, starCanvas.height);
-  stars.forEach(s => {
-    s.y += 0.0002 * (1 + s.z);
-    if (s.y > 1) s.y = 0;
-    sctx.globalAlpha = 0.4 + s.z * 0.6;
-    sctx.fillStyle = "#ffffff";
-    sctx.fillRect(s.x * starCanvas.width, s.y * starCanvas.height, s.z * 2, s.z * 2);
+/* ===== STAR FIELD ===== */
+const stars = Array.from({length:240},()=>({x:Math.random(),y:Math.random(),z:Math.random()}));
+function drawStars(){
+  sctx.clearRect(0,0,starCanvas.width,starCanvas.height);
+  stars.forEach(st=>{
+    st.y += 0.00025 * (1 + st.z);
+    if(st.y > 1) st.y = 0;
+    sctx.globalAlpha = 0.3 + st.z * 0.6;
+    sctx.fillStyle = "#fff";
+    sctx.beginPath();
+    sctx.arc(st.x * starCanvas.width, st.y * starCanvas.height, st.z * 1.4, 0, Math.PI*2);
+    sctx.fill();
   });
   sctx.globalAlpha = 1;
 }
 
-// DATA variables
-let solarSSN = 120;
-let xrayClass = "A0";
-let xrayValue = 1e-8;
-let protonEvent = false;
-let cloudCover = 50;
-let humidity = 70;
-let cosmicFactor = 1;
-let cloudStage = 0;
-
-// Simple noise
-function noise(x, y) {
-  return (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+/* ===== SIMPLE NOISE ===== */
+function noise(x,y){
+  return (Math.sin(x*12.989 + y*78.233) * 43758.5453) % 1;
 }
 
-// CLOUD drawing
+/* ===== ENV DATA ===== */
+let cloudFactor = 1;
+let weatherCode = 0;
+let cloudEnergy = 0;
+let cloudCover = 0;
+let humidity = 0;
+let cloudStage = 0;
+let baseColor = {r: 255, g: 255, b: 255};
+
+/* ===== COSMIC CLOUD ===== */
+function getCloudColor(code) {
+  if(code === 0) { baseColor = {r: 255, g: 255, b: 255}; }
+  else if(code === 1 || code === 2) { baseColor = {r: 240, g: 245, b: 255}; }
+  else if(code === 3) { baseColor = {r: 220, g: 220, b: 255}; }
+  else if(code >= 45 && code < 50) { baseColor = {r: 230, g: 220, b: 255}; }
+  else if(code >= 50 && code < 60) { baseColor = {r: 220, g: 240, b: 255}; }
+  else if(code >= 60) { baseColor = {r: 200, g: 220, b: 255}; }
+  else { baseColor = {r: 255, g: 240, b: 250}; }
+}
+
 function drawCosmicCloud() {
-  const time = Date.now() * 0.00008; // трохи швидше для видимої анімації
-  const w = cloudCanvas.width;
-  const h = cloudCanvas.height;
-  const cx = w / 2;
-  const cy = h / 2.2;
-  const baseSize = 500 + cloudStage * 180;
+  const time = Date.now() * 0.00007;
+  const centerX = tCanvas.width / 2;
+  const centerY = tCanvas.height / 2.3;
+  const baseSize = 420 + cloudStage * 140;
 
-  ctx.clearRect(0, 0, w, h);
+  const numLayers = 5 + Math.floor(cloudCover / 30);
+  const density = 0.6 + humidity / 160;
 
-  const layers = 6 + Math.floor(solarSSN / 20) + Math.floor(cloudCover / 25);
-  const pulse = Math.sin(time * 10) * 0.12 + 1; // сильніша пульсація
+  tctx.clearRect(0, 0, tCanvas.width, tCanvas.height);
 
-  for (let layer = 0; layer < layers; layer++) {
-    const scale = 0.0012 + layer * 0.0003;
-    const alpha = (0.32 + layer * 0.13) * (0.6 + humidity / 200) * pulse;
-    const offset = layer * 18 + time * (0.2 + layer * 0.15);
+  for (let layer = 0; layer < numLayers; layer++) {
+    const alpha = (0.3 + layer * 0.12) * density;
+    const scale = 0.0015 + layer * 0.00035;
+    const offset = layer * 15 + time * (0.25 + layer * 0.15);
 
-    const img = ctx.createImageData(w, h);
-    const data = img.data;
+    const imageData = tctx.getImageData(0, 0, tCanvas.width, tCanvas.height);
+    const pixels = imageData.data;
 
-    for (let y = 0; y < h; y += 2) {
-      for (let x = 0; x < w; x += 2) {
-        const nx = (x - cx) * scale;
-        const ny = (y - cy) * scale;
+    for (let y = 0; y < tCanvas.height; y += 2) {
+      for (let x = 0; x < tCanvas.width; x += 2) {
+        const nx = (x - centerX) * scale;
+        const ny = (y - centerY) * scale;
 
         let n = 0;
-        n += noise(nx + time + offset, ny + time + offset) * 0.6;
-        n += noise(nx * 2.7 + time * 1.5, ny * 2.7 + time * 1.5) * 0.3;
-        n += noise(nx * 6 + time * 2.8, ny * 6 + time * 2.8) * 0.1;
+        n += noise(nx * 1.0 + time + offset, ny * 1.0 + time + offset) * 0.55;
+        n += noise(nx * 2.8 + time * 1.4, ny * 2.8 + time * 1.4) * 0.28;
+        n += noise(nx * 6.0 + time * 2.3, ny * 6.0 + time * 2.3) * 0.17;
         n = (n + 1) / 2;
 
-        const dist = Math.hypot(x - cx, y - cy) / baseSize;
-        let falloff = Math.max(0, 1 - dist * dist * 1.3);
-        falloff = Math.pow(falloff, 1.2);
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy) / baseSize;
+        let falloff = Math.max(0, 1 - dist * dist * 1.35);
+        falloff = Math.pow(falloff, 1.25);
 
-        const flareBoost = xrayValue > 1e-5 ? Math.log10(xrayValue) * 3 : 0;
-        const protonGlow = protonEvent ? 0.5 + Math.sin(time * 25) * 0.3 : 0;
-
-        if (n * falloff > 0.34) {
-          const brightness = n * (1.2 + flareBoost + protonGlow);
-          const r = 180 + 75 * flareBoost + 100 * protonGlow;
-          const g = 220 + 35 * protonGlow;
-          const b = 255;
-
-          const i = (y * w + x) * 4;
-          data[i]     = Math.min(255, r * brightness);
-          data[i + 1] = Math.min(255, g * brightness);
-          data[i + 2] = Math.min(255, b * brightness);
-          data[i + 3] = Math.floor(255 * alpha * falloff * 1.15);
+        if (n * falloff > 0.35) {
+          const brightness = n * 1.18;
+          const idx = (y * tCanvas.width + x) * 4;
+          pixels[idx]     = Math.min(255, baseColor.r * brightness);
+          pixels[idx + 1] = Math.min(255, baseColor.g * brightness);
+          pixels[idx + 2] = Math.min(255, baseColor.b * brightness);
+          pixels[idx + 3] = Math.floor(255 * alpha * falloff * 1.12);
         }
       }
     }
-    ctx.putImageData(img, 0, 0);
+    tctx.putImageData(imageData, 0, 0);
   }
 }
 
-function growCloud() {
-  cloudStage += 0.0018 * cosmicFactor; // постійно росте
+function growCloud(){
+  if(cloudStage < 7) cloudStage += 0.0015 * cloudFactor;
 }
 
-// API updates
-async function updateAllData() {
-  // Solar SSN (fallback 120)
-  try {
-    const res = await fetch('https://services.swpc.noaa.gov/json/solar-cycle/predicted-solar-cycle.json');
-    const data = await res.json();
-    solarSSN = data[data.length - 1]?.predicted_ssn || 120;
-  } catch (e) {}
+/* ===== WEATHER API ===== */
+async function updateWeather(){
+  try{
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=50.45&longitude=30.52&current=temperature_2m,relative_humidity_2m,cloud_cover,weather_code');
+    const d = await r.json();
+    const current = d.current;
+    weatherCode = current.weather_code;
+    cloudCover = current.cloud_cover;
+    humidity = current.relative_humidity_2m;
+    cloudFactor = Math.min(3, 0.6 + cloudCover / 50 + humidity / 200);
+    cloudEnergy = cloudFactor * (0.8 + Math.random() * 0.2);
+    getCloudColor(weatherCode);
 
-  // X-ray
-  try {
-    const res = await fetch('https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json');
-    const data = await res.json();
-    const latest = data[data.length - 1];
-    xrayValue = latest?.flux || 1e-8;
-    xrayClass = latest?.class || "A0";
-  } catch (e) {}
-
-  // Proton events
-  try {
-    const res = await fetch('https://services.swpc.noaa.gov/json/goes/primary/protons-1-day.json');
-    const data = await res.json();
-    protonEvent = data.some(p => p.energy === ">=10 MeV" && p.flux > 10);
-  } catch (e) { protonEvent = false; }
-
-  // Earth weather (Kyiv)
-  try {
-    const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=50.45&longitude=30.52&current=cloud_cover,relative_humidity_2m');
-    const d = await res.json();
-    cloudCover = d.current.cloud_cover ?? 50;
-    humidity = d.current.relative_humidity_2m ?? 70;
-  } catch (e) {}
-
-  // Cosmic factor calculation
-  cosmicFactor = Math.min(3.5,
-    0.7 +
-    solarSSN / 80 +
-    Math.log10(Math.max(xrayValue, 1e-8)) * 1.2 +
-    cloudCover / 70 +
-    humidity / 300 +
-    (protonEvent ? 1.2 : 0)
-  );
-
-  // Update UI
-  document.getElementById('ssn').textContent = solarSSN.toFixed(1);
-  document.getElementById('xray').textContent = xrayClass;
-  document.getElementById('cloudcover').textContent = cloudCover;
-  document.getElementById('hum').textContent = humidity;
-  document.getElementById('cf').textContent = cosmicFactor.toFixed(2);
+    document.getElementById('wcode').textContent = weatherCode;
+    document.getElementById('cf').textContent = cloudFactor.toFixed(2);
+    document.getElementById('ce').textContent = cloudEnergy.toFixed(2);
+  }catch(e){
+    cloudFactor = 1;
+  }
 }
+updateWeather();
+setInterval(updateWeather, 1800000);
 
-updateAllData();
-setInterval(updateAllData, 300000); // кожні 5 хвилин
-
-// SENSORS panel
-function drawSensors() {
-  sx.clearRect(0, 0, sensorCanvas.width, sensorCanvas.height);
-  const by = 110;
-
-  sx.strokeStyle = 'rgba(0,255,255,0.25)';
-  sx.beginPath();
-  sx.moveTo(0, by);
-  sx.lineTo(sensorCanvas.width, by);
-  sx.stroke();
-
-  sx.fillStyle = protonEvent ? '#f0f' : 'rgba(0,255,255,0.9)';
-  sx.beginPath();
-  sx.arc(80, by - 40, 12 + cosmicFactor * 4, 0, Math.PI * 2);
-  sx.fill();
-  sx.fillStyle = '#fff';
-  sx.fillText('☢ сонце', 50, by + 20);
-
-  sx.strokeStyle = 'rgba(0,255,200,0.8)';
-  sx.lineWidth = 3;
-  sx.beginPath();
-  sx.moveTo(160, by);
-  sx.lineTo(160, by - cosmicFactor * 28);
-  sx.stroke();
-  sx.fillStyle = '#fff';
-  sx.fillText('⚡ космос', 135, by + 20);
-
+/* ===== SENSORS ===== */
+function drawSensors(){
+  scx.clearRect(0,0,sensorCanvas.width,sensorCanvas.height);
+  const baseY = 110;
+  scx.strokeStyle='rgba(120,255,180,0.25)';
+  scx.beginPath(); scx.moveTo(0,baseY); scx.lineTo(sensorCanvas.width,baseY); scx.stroke();
+  scx.fillStyle='rgba(200,200,200,0.8)';
+  scx.beginPath();
+  scx.arc(80, baseY-40, 10+cloudFactor*3, 0, Math.PI*2);
+  scx.fill();
+  scx.fillText('☁ хмара', 50, baseY+20);
+  scx.strokeStyle='rgba(120,220,160,0.8)';
+  scx.beginPath();
+  scx.moveTo(160, baseY);
+  scx.lineTo(160, baseY-cloudEnergy*25);
+  scx.stroke();
+  scx.fillText('🌥 формування', 140, baseY+20);
   const now = new Date();
-  const elapsed = (now - new Date('2026-01-30')) / (1000 * 60 * 60 * 24 * 365);
-  sx.strokeStyle = 'rgba(0,200,255,0.7)';
-  sx.beginPath();
-  sx.arc(260, by, 32, -Math.PI / 2, -Math.PI / 2 + (elapsed % 1) * Math.PI * 2);
-  sx.stroke();
-  sx.fillStyle = '#fff';
-  sx.fillText('∞ цикл', 230, by + 20);
+  const t = Math.min(1,(now-START_DATE)/(STOP_DATE-START_DATE));
+  scx.strokeStyle='rgba(180,180,255,0.7)';
+  scx.beginPath();
+  scx.arc(260, baseY, 30, -Math.PI/2, -Math.PI/2 + t*Math.PI*2);
+  scx.stroke();
+  scx.fillText('⏳ цикл', 235, baseY+20);
 }
 
-// Day counter
-const START = new Date('2026-01-30');
-function updateDay() {
+/* ===== LOOP ===== */
+const START_DATE = new Date('2026-01-01');
+const STOP_DATE = new Date('2026-12-13');
+
+function updateDay(){
   const now = new Date();
-  const days = Math.floor((now - START) / (1000 * 60 * 60 * 24));
-  document.getElementById('day').textContent = days;
+  const day = Math.floor((now - START_DATE) / (1000*60*60*24));
+  document.getElementById('day').textContent = day >= 0 ? day : 0;
+  document.getElementById('phase').textContent = now < STOP_DATE ? 'Growth' : 'Final';
 }
 setInterval(updateDay, 60000);
 updateDay();
 
-// MAIN LOOP
-function loop() {
+function loop(){
   drawStars();
   drawSensors();
-  growCloud();          // постійно росте
-  drawCosmicCloud();    // постійно анімується
+  if(new Date() < STOP_DATE){
+    growCloud();
+  }
+  drawCosmicCloud();
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
