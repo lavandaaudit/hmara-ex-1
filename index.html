@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IBONIRIUM · Space Cloud · EXP‑01</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width:100%; height:100%;
+  background:#000;
+  overflow:hidden;
+}
+canvas { position:fixed; inset:0; }
+#sensors{ position:fixed; left:0; right:0; bottom:0; height:140px; pointer-events:none; }
+#info {
+  position:fixed;
+  bottom:12px; left:12px;
+  font-family:monospace;
+  color:#9affc2;
+  font-size:12px;
+  line-height:1.4;
+  opacity:0.9;
+}
+#panel {
+  position:fixed;
+  bottom:12px; right:12px;
+  max-width:360px;
+  font-family:monospace;
+  font-size:12px;
+  color:#c7ffd9;
+  line-height:1.45;
+  background:linear-gradient(to left,rgba(0,0,0,0.6),transparent);
+  padding:10px 14px;
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<canvas id="terrarium"></canvas>
+<canvas id="sensors"></canvas>
+<div id="info">
+<b>IBONIRIUM · LAB SPACE CLOUD · EXP‑01</b><br>
+Phase: <span id="phase">Growth</span><br>
+Day: <span id="day">–</span><br>
+Weather Code: <span id="wcode">–</span><br>
+Cloud Factor: <span id="cf">–</span><br>
+Cloud Energy: <span id="ce">–</span><br>
+Target: 13 грудня
+</div>
+<div id="panel">
+<b>СТАН ЕКСПЕРИМЕНТУ</b><br>
+Це живий лабораторний симулятор космічної хмари. Система формування хмари безперервно реагує на реальні дані погоди з Open-Meteo. Щодня погода змінює густоту, форму, структуру та колір космічної хмари.<br><br>
+До <b>13 грудня</b> відбувається накопичення змін хмари. У цей день експеримент переходить у фінальну фазу: зміни зупиняються, стан хмари фіксується як результат досліду. Після фіксації може бути запущено нову симуляцію з іншими початковими умовами.
+</div>
+<script>
+/* ===== CANVAS ===== */
+const starCanvas = document.getElementById('stars');
+const tCanvas = document.getElementById('terrarium');
+const sctx = starCanvas.getContext('2d');
+const tctx = tCanvas.getContext('2d');
+const sensorCanvas = document.getElementById('sensors');
+const scx = sensorCanvas.getContext('2d');
+function resize(){
+  starCanvas.width = tCanvas.width = sensorCanvas.width = innerWidth;
+  starCanvas.height = tCanvas.height = innerHeight;
+  sensorCanvas.height = 140;
+}
+addEventListener('resize', resize); resize();
+/* ===== STAR FIELD ===== */
+const stars = Array.from({length:240},()=>({x:Math.random(),y:Math.random(),z:Math.random()}));
+function drawStars(){
+  sctx.clearRect(0,0,starCanvas.width,starCanvas.height);
+  stars.forEach(st=>{
+    st.y+=0.00025*(1+st.z);
+    if(st.y>1) st.y=0;
+    sctx.globalAlpha=0.3+st.z*0.6;
+    sctx.fillStyle="#fff";
+    sctx.beginPath();
+    sctx.arc(st.x*starCanvas.width, st.y*starCanvas.height, st.z*1.4, 0, Math.PI*2);
+    sctx.fill();
+  });
+  sctx.globalAlpha=1;
+}
+/* ===== SIMPLE NOISE ===== */
+function noise(x,y){
+  return (Math.sin(x*12.989 + y*78.233) * 43758.5453) % 1;
+}
+/* ===== ENV DATA ===== */
+let cloudFactor = 1;
+let weatherCode = 0;
+let cloudEnergy = 0;
+let cloudCover = 0;
+let humidity = 0;
+let cloudStage = 0;
+let baseColor = {r: 255, g: 255, b: 255};
+/* ===== COSMIC CLOUD ===== */
+function getCloudColor(code) {
+  if(code === 0)         { baseColor = {r: 255, g: 255, b: 255}; }
+  else if(code === 1 || code === 2) { baseColor = {r: 240, g: 245, b: 255}; }
+  else if(code === 3)    { baseColor = {r: 220, g: 220, b: 255}; }
+  else if(code >= 45 && code < 50) { baseColor = {r: 230, g: 220, b: 255}; }
+  else if(code >= 50 && code < 60) { baseColor = {r: 220, g: 240, b: 255}; }
+  else if(code >= 60)    { baseColor = {r: 200, g: 220, b: 255}; }
+  else                   { baseColor = {r: 255, g: 240, b: 250}; }
+}
+function drawCosmicCloud() {
+  const time = Date.now() * 0.00007; // трохи повільніше для масштабної хмари
+  const centerX = tCanvas.width / 2;
+  const centerY = tCanvas.height / 2.3; // трохи вище, щоб не лізти в панель
+  const baseSize = 420 + cloudStage * 140; // значно більша хмара
+  
+  const numLayers = 5 + Math.floor(cloudCover / 30);
+  const density = 0.6 + humidity / 160;
+  
+  tctx.clearRect(0, 0, tCanvas.width, tCanvas.height);
+  
+  for (let layer = 0; layer < numLayers; layer++) {
+    const alpha = (0.3 + layer * 0.12) * density;
+    const scale = 0.0015 + layer * 0.00035;
+    const offset = layer * 15 + time * (0.25 + layer * 0.15);
+    
+    const imageData = tctx.getImageData(0, 0, tCanvas.width, tCanvas.height);
+    const pixels = imageData.data;
+    
+    for (let y = 0; y < tCanvas.height; y += 2) {
+      for (let x = 0; x < tCanvas.width; x += 2) {
+        const nx = (x - centerX) * scale;
+        const ny = (y - centerY) * scale;
+        
+        let n = 0;
+        n += noise(nx * 1.0 + time + offset, ny * 1.0 + time + offset) * 0.55;
+        n += noise(nx * 2.8 + time * 1.4, ny * 2.8 + time * 1.4) * 0.28;
+        n += noise(nx * 6.0 + time * 2.3, ny * 6.0 + time * 2.3) * 0.17;
+        n = (n + 1) / 2;
+        
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy) / baseSize;
+        let falloff = Math.max(0, 1 - dist * dist * 1.35);
+        falloff = Math.pow(falloff, 1.25);
+        
+        if (n * falloff > 0.35) {
+          const brightness = n * 1.18; // трошки світліше
+          const idx = (y * tCanvas.width + x) * 4;
+          pixels[idx]     = Math.min(255, baseColor.r * brightness);
+          pixels[idx + 1] = Math.min(255, baseColor.g * brightness);
+          pixels[idx + 2] = Math.min(255, baseColor.b * brightness);
+          pixels[idx + 3] = Math.floor(255 * alpha * falloff * 1.12);
+        }
+      }
+    }
+    tctx.putImageData(imageData, 0, 0);
+  }
+}
+function growCloud(){
+  if(cloudStage < 7) cloudStage += 0.0015 * cloudFactor; // трохи повільніше зростання
+}
+/* ===== WEATHER API ===== */
+async function updateWeather(){
+  try{
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=50.45&longitude=30.52&current=temperature_2m,relative_humidity_2m,cloud_cover,weather_code');
+    const d = await r.json();
+    const current = d.current;
+    weatherCode = current.weather_code;
+    cloudCover = current.cloud_cover;
+    humidity = current.relative_humidity_2m;
+    cloudFactor = Math.min(3, 0.6 + cloudCover / 50 + humidity / 200);
+    cloudEnergy = cloudFactor * (0.8 + Math.random() * 0.2);
+    getCloudColor(weatherCode);
+    document.getElementById('wcode').textContent = weatherCode;
+    document.getElementById('cf').textContent = cloudFactor.toFixed(2);
+    document.getElementById('ce').textContent = cloudEnergy.toFixed(2);
+  }catch(e){ cloudFactor=1; }
+}
+updateWeather(); setInterval(updateWeather,1800000);
+/* ===== SENSORS ===== */
+function drawSensors(){
+  scx.clearRect(0,0,sensorCanvas.width,sensorCanvas.height);
+  const baseY = 110;
+  scx.strokeStyle='rgba(120,255,180,0.25)';
+  scx.beginPath(); scx.moveTo(0,baseY); scx.lineTo(sensorCanvas.width,baseY); scx.stroke();
+  scx.fillStyle='rgba(200,200,200,0.8)';
+  scx.beginPath();
+  scx.arc(80, baseY-40, 10+cloudFactor*3, 0, Math.PI*2);
+  scx.fill();
+  scx.fillText('☁ хмара', 50, baseY+20);
+  scx.strokeStyle='rgba(120,220,160,0.8)';
+  scx.beginPath();
+  scx.moveTo(160, baseY);
+  scx.lineTo(160, baseY-cloudEnergy*25);
+  scx.stroke();
+  scx.fillText('🌥 формування', 140, baseY+20);
+  const now = new Date();
+  const t = Math.min(1,(now-START_DATE)/(STOP_DATE-START_DATE));
+  scx.strokeStyle='rgba(180,180,255,0.7)';
+  scx.beginPath();
+  scx.arc(260, baseY, 30, -Math.PI/2, -Math.PI/2 + t*Math.PI*2);
+  scx.stroke();
+  scx.fillText('⏳ цикл', 235, baseY+20);
+}
+/* ===== LOOP ===== */
+const START_DATE = new Date('2026-01-01');
+const STOP_DATE = new Date('2026-12-13');
+function updateDay(){
+  const now = new Date();
+  const day = Math.floor((now-START_DATE)/(1000*60*60*24));
+  document.getElementById('day').textContent = day>=0?day:0;
+  document.getElementById('phase').textContent = now<STOP_DATE?'Growth':'Final';
+}
+setInterval(updateDay,60000);
+updateDay();
+function loop(){
+  drawStars();
+  drawSensors();
+  if(new Date()<STOP_DATE){
+    growCloud();
+  }
+  drawCosmicCloud();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
