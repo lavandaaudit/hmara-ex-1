@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>IBONIRIUM · Space Cloud · EXP‑01</title>
+<title>IBONIRIUM · Cloud Barometer · EXP‑01</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body {
@@ -40,18 +40,17 @@ canvas { position:fixed; inset:0; }
 <canvas id="terrarium"></canvas>
 <canvas id="sensors"></canvas>
 <div id="info">
-<b>IBONIRIUM · LAB SPACE CLOUD · EXP‑01</b><br>
-Phase: <span id="phase">Growth</span><br>
-Day: <span id="day">–</span><br>
+<b>IBONIRIUM · LAB CLOUD BAROMETER · EXP‑01</b><br>
 Weather Code: <span id="wcode">–</span><br>
+Cloud Cover: <span id="cc">–</span>%<br>
+Humidity: <span id="hum">–</span>%<br>
 Cloud Factor: <span id="cf">–</span><br>
 Cloud Energy: <span id="ce">–</span><br>
-Target: 13 грудня
 </div>
 <div id="panel">
-<b>СТАН ЕКСПЕРИМЕНТУ</b><br>
-Це живий лабораторний симулятор космічної хмари. Система формування хмари безперервно реагує на реальні дані погоди з Open-Meteo. Щодня погода змінює густоту, форму, структуру та колір космічної хмари.<br><br>
-До <b>13 грудня</b> відбувається накопичення змін хмари. У цей день експеримент переходить у фінальну фазу: зміни зупиняються, стан хмари фіксується як результат досліду. Після фіксації може бути запущено нову симуляцію з іншими початковими умовами.
+<b>СТАН ПРИЛАДУ</b><br>
+Це барометр хмар — живий симулятор, що вимірює стан хмар у реальному часі. Система реагує на дані з Open-Meteo, симулюючи реальну хмару на основі хмарності, вологості та погодного коду. Хмара динамічно змінюється, відображаючи поточний стан атмосфери.<br><br>
+Прилад постійно оновлює дані та візуалізує хмару як індикатор стану неба.
 </div>
 <script>
 /* ===== CANVAS ===== */
@@ -95,7 +94,6 @@ let weatherCode = 0;
 let cloudEnergy = 0;
 let cloudCover = 0;
 let humidity = 0;
-let cloudStage = 0;
 let baseColor = {r: 255, g: 255, b: 255};
 
 /* ===== COSMIC CLOUD ===== */
@@ -113,7 +111,7 @@ function drawCosmicCloud() {
   const time = Date.now() * 0.00007;
   const centerX = tCanvas.width / 2;
   const centerY = tCanvas.height / 2.3;
-  const baseSize = 420 + cloudStage * 140;
+  const baseSize = 560; // Фіксований розмір, без зростання
 
   const numLayers = 5 + Math.floor(cloudCover / 30);
   const density = 0.6 + humidity / 160;
@@ -159,10 +157,6 @@ function drawCosmicCloud() {
   }
 }
 
-function growCloud(){
-  if(cloudStage < 7) cloudStage += 0.0015 * cloudFactor;
-}
-
 /* ===== WEATHER API ===== */
 async function updateWeather(){
   try{
@@ -177,6 +171,8 @@ async function updateWeather(){
     getCloudColor(weatherCode);
 
     document.getElementById('wcode').textContent = weatherCode;
+    document.getElementById('cc').textContent = cloudCover;
+    document.getElementById('hum').textContent = humidity;
     document.getElementById('cf').textContent = cloudFactor.toFixed(2);
     document.getElementById('ce').textContent = cloudEnergy.toFixed(2);
   }catch(e){
@@ -203,34 +199,21 @@ function drawSensors(){
   scx.lineTo(160, baseY-cloudEnergy*25);
   scx.stroke();
   scx.fillText('🌥 формування', 140, baseY+20);
-  const now = new Date();
-  const t = Math.min(1,(now-START_DATE)/(STOP_DATE-START_DATE));
-  scx.strokeStyle='rgba(180,180,255,0.7)';
+  // Додаємо барометр для хмарності (0-100%)
+  scx.strokeStyle='rgba(180,255,180,0.7)';
   scx.beginPath();
-  scx.arc(260, baseY, 30, -Math.PI/2, -Math.PI/2 + t*Math.PI*2);
+  scx.moveTo(260, baseY);
+  scx.lineTo(260, baseY - (cloudCover / 100) * 80); // Масштаб від 0 до 80 пікселів
+  scx.lineWidth = 10;
   scx.stroke();
-  scx.fillText('⏳ цикл', 235, baseY+20);
+  scx.lineWidth = 1;
+  scx.fillText('📏 хмарність', 235, baseY+20);
 }
 
 /* ===== LOOP ===== */
-const START_DATE = new Date('2026-01-01');
-const STOP_DATE = new Date('2026-12-13');
-
-function updateDay(){
-  const now = new Date();
-  const day = Math.floor((now - START_DATE) / (1000*60*60*24));
-  document.getElementById('day').textContent = day >= 0 ? day : 0;
-  document.getElementById('phase').textContent = now < STOP_DATE ? 'Growth' : 'Final';
-}
-setInterval(updateDay, 60000);
-updateDay();
-
 function loop(){
   drawStars();
   drawSensors();
-  if(new Date() < STOP_DATE){
-    growCloud();
-  }
   drawCosmicCloud();
   requestAnimationFrame(loop);
 }
